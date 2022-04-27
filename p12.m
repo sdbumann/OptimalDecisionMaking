@@ -52,17 +52,52 @@ battery.ed = 0.92; % discharging efficiency
 
 %% Economic Dispatch
 % three elements
-%variables Initial
+% variables Initial
 
 con=[];%constraints initial
 obj=0;%objective function initial
 
+% decision variable
+g=sdpvar(T,NGen);   %power produced by the traditional generator i at time t 
+                    % = array of size (number of time steps x number of generators)
+S=sdpvar(T,1);      %charge of battery at beginning of hourt t (number of time steps x 1)
+bc=sdpvar(T,1);     %charging ammount in hour t (number of time steps x 1)
+bd=sdpvar(T,1);     %discharging ammount in hour t (number of time steps x 1)
+
 % objective function
+obj = sum(g,1)*[G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost];
 
 % constraints
+con = [
+    sum(g,2) + r + battery.ed.*bd - bc==d,
+    g>=zeros(T,NGen),
+    g<=repmat([G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity],T,1),
+    diff(g)<=repmat([G1.rampup, G2.rampup, G3.rampup, G4.rampup, G5.rampup, G6.rampup],T-1,1),
+    -diff(g)<=repmat([G1.rampdown, G2.rampdown, G3.rampdown, G4.rampdown, G5.rampdown, G6.rampdown],T-1,1),
+    S(1)==0,
+    S(T) + bc(T)*battery.ec - bd(T)==0,%corresponds to S(T+1)==0 (but it is easier if S is only a vector of length T)
+    S>=zeros(T,1),
+    S<=repmat([battery.capacity],T,1),
+    [diff(S); -S(T)]==bc.*battery.ec - bd, %because the last element of the difference would be S(T+1)-S(T)=0-S(T)=-S(T)
+    bc>=zeros(T,1),
+    bd>=zeros(T,1)
+]
 
 %% define sdpsetting
 ops=sdpsettings('solver','LINPROG');
 sol=solvesdp(con,obj,ops);
 
 % obtain the solutions and objective value
+disp(['The value of the objective function is ',num2str(value(obj))]) %gives value of objective function
+
+disp('The optimal value of the decision variable g is given by')
+g_value=value(g) %gives optimal value of decision variable g
+
+disp('The charge of the battery at the beginning of time t is given by')
+S_value=value(S) %gives charge of battery at beginning of hour t
+
+disp('The charging ammount of the battery in hour t is given by')
+bc_value=value(bc) %gives charge of battery at beginning of hour t
+
+disp('The discharging ammount of the battery in hour t is given by')
+bd_value=value(bd) %gives charge of battery at beginning of hour t
