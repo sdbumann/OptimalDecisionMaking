@@ -87,11 +87,11 @@ obj=0;%objective function initial
 % decision variable
 g=sdpvar(T,NGen);   %power produced by the traditional generator i at time t 
                     % = array of size (number of time steps x number of generators)
-x=binvar(T,NGen);   %x_i^t=1 -> generator i running at time t
+x=sdpvar(T,NGen);   %x_i^t=1 -> generator i running at time t
                     %x_i^t=0 -> generator i not running at time t
-u=binvar(T,NGen);   %u_i^t=1 -> generator i turned on at time t
+u=sdpvar(T,NGen);   %u_i^t=1 -> generator i turned on at time t
                     %u_i^t=0 -> generator i not turned on at time t
-v=binvar(T,NGen);   %v_i^t=1 -> generator i turned off at time t
+v=sdpvar(T,NGen);   %v_i^t=1 -> generator i turned off at time t
                     %v_i^t=0 -> generator i not turned off at time t
 
 % objective function
@@ -107,17 +107,16 @@ con = [
     g<=x.*repmat([G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity],T,1),
     -diff(x) + u(2:end,:) >= zeros(T-1,NGen),
     diff(x) + v(2:end,:) >= zeros(T-1,NGen),
+    x >= zeros(T,NGen),
+    x <= ones(T,NGen),
+    u >= zeros(T,NGen),
+    u <= ones(T,NGen),
+    v >= zeros(T,NGen),
+    v <= ones(T,NGen),
     x(1,:) == [G1.inital, G2.inital, G3.inital, G4.inital, G5.inital, G6.inital],
     u(1,:) == zeros(1,NGen),
-    v(1,:) == zeros(1,NGen),
+    v(1,:) == zeros(1,NGen)
 ];
-
-% G1.inital = 1;
-% G2.inital = 0;
-% G3.inital = 0;
-% G4.inital = 0;
-% G5.inital = 0;
-% G6.inital = 0;
 
 con = minup_con_generate(con, x, [G1.minup, G2.minup, G3.minup, G4.minup, G5.minup, G6.minup]);
 con = mindown_con_generate(con,x,[G1.mindown, G2.mindown, G3.mindown, G4.mindown, G5.mindown, G6.mindown]);
