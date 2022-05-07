@@ -87,7 +87,7 @@ obj=0;%objective function initial
 % decision variable
 g=sdpvar(T,NGen);   %power produced by the traditional generator i at time t 
                     % = array of size (number of time steps x number of generators)
-x=sdpvar(T,NGen);   %x_i^t=1 -> generator i running at time t
+x=binvar(T,NGen);   %x_i^t=1 -> generator i running at time t
                     %x_i^t=0 -> generator i not running at time t
 u=sdpvar(T,NGen);   %u_i^t=1 -> generator i turned on at time t
                     %u_i^t=0 -> generator i not turned on at time t
@@ -107,8 +107,6 @@ con = [
     g<=x.*repmat([G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity],T,1),
     -diff(x) + u(2:end,:) >= zeros(T-1,NGen),
     diff(x) + v(2:end,:) >= zeros(T-1,NGen),
-    x >= zeros(T,NGen),
-    x <= ones(T,NGen),
     u >= zeros(T,NGen),
     u <= ones(T,NGen),
     v >= zeros(T,NGen),
