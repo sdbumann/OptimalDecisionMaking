@@ -84,7 +84,7 @@ con = [
 ]
 
 %% define sdpsetting
-ops=sdpsettings('solver','LINPROG');
+ops=sdpsettings('solver','MOSEK');
 sol=solvesdp(con,obj,ops);
 
 % obtain the solutions and objective value
