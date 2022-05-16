@@ -101,14 +101,12 @@ c=sdpvar(T,NGen);       %decision variable used to approcimate the functional
 lambda=sdpvar(2*T,1);   %decision variable recived by dualization
 mu=sdpvar(T,NGen,2*T);
 eta=sdpvar(T,NGen,2*T);
-g=sdpvar(T,NGen);       %power produced by the traditional generator i at time t 
-                        % = array of size (number of time steps x number of generators)
-%r=sdpvar(T,1)           % renewable energy source                    
 
 % objective function
 obj =   sum(x,1)*[G1.noload; G2.noload; G3.noload; G4.noload; G5.noload; G6.noload] + ...
         sum(u,1)*[G1.startup; G2.startup; G3.startup; G4.startup; G5.startup; G6.startup] + ...
         sum(v,1)*[G1.shutdown; G2.shutdown; G3.shutdown; G4.shutdown; G5.shutdown; G6.shutdown] + ...
+        sum(c,1)*[G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost] + ...
         [r_hat.'+r_bar.',r_hat.'-r_bar.']*lambda;
 
 % constraints
@@ -121,7 +119,7 @@ con = [
     -diff(x) + u(2:end,:) >= zeros(T-1,NGen),
     diff(x) + v(2:end,:) >= zeros(T-1,NGen),
     
-    lambda(1:T) - lambda(T+1:end) >= ([G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost].'*(a.'+b.')).', % last row of b is zeros
+    lambda(1:T) - lambda(T+1:end) == ([G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost].'*(a.'+b.')).', % last row of b is zeros
     lambda >= zeros(2*T,1),
     
     
@@ -150,6 +148,15 @@ disp(['The value of the objective function is ',num2str(value(obj))]) %gives val
 
 disp('When to run the generator and when not is given by')
 x_value=value(x)
+
+disp('Value of a is given by')
+a_value=value(a)
+
+disp('Value of b is given by')
+b_value=value(b)
+
+disp('Value of c is given by')
+c_value=value(c)
 
 
 
