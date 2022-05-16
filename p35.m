@@ -86,59 +86,57 @@ con=[];%constraints initial
 obj=0;%objective function initial
 
 % decision variable
-x=binvar(T,NGen);   %x_i^t=1 -> generator i running at time t
-                    %x_i^t=0 -> generator i not running at time t
-u=binvar(T,NGen);   %u_i^t=1 -> generator i turned on at time t
-                    %u_i^t=0 -> generator i not turned on at time t
-v=binvar(T,NGen);   %v_i^t=1 -> generator i turned off at time t
-                    %v_i^t=0 -> generator i not turned off at time t
-a=sdpvar(T,NGen);   %decision variable used to approcimate the functional
-                    %decisions by linear decision rules
-b=sdpvar(T,NGen);   %decision variable used to approcimate the functional
-                    %decisions by linear decision rules
-c=sdpvar(T,NGen);   %decision variable used to approcimate the functional
-                    %decisions by linear decision rules
-z=sdpvar(4*T,1);    %decision variable recived by dualization
-g=sdpvar(T,NGen);   %power produced by the traditional generator i at time t 
-                    % = array of size (number of time steps x number of generators)
-r=sdpvar(T,1)       % renewable energy source                    
+x=binvar(T,NGen);       %x_i^t=1 -> generator i running at time t
+                        %x_i^t=0 -> generator i not running at time t
+u=binvar(T,NGen);       %u_i^t=1 -> generator i turned on at time t
+                        %u_i^t=0 -> generator i not turned on at time t
+v=binvar(T,NGen);       %v_i^t=1 -> generator i turned off at time t
+                        %v_i^t=0 -> generator i not turned off at time t
+a=sdpvar(T,NGen);       %decision variable used to approcimate the functional
+                        %decisions by linear decision rules
+b=sdpvar(T,NGen);       %decision variable used to approcimate the functional
+                        %decisions by linear decision rules
+c=sdpvar(T,NGen);       %decision variable used to approcimate the functional
+                        %decisions by linear decision rules
+lambda=sdpvar(2*T,1);   %decision variable recived by dualization
+mu=sdpvar(T,NGen,2*T);
+eta=sdpvar(T,NGen,2*T);
+g=sdpvar(T,NGen);       %power produced by the traditional generator i at time t 
+                        % = array of size (number of time steps x number of generators)
+%r=sdpvar(T,1)           % renewable energy source                    
 
 % objective function
 obj =   sum(x,1)*[G1.noload; G2.noload; G3.noload; G4.noload; G5.noload; G6.noload] + ...
         sum(u,1)*[G1.startup; G2.startup; G3.startup; G4.startup; G5.startup; G6.startup] + ...
         sum(v,1)*[G1.shutdown; G2.shutdown; G3.shutdown; G4.shutdown; G5.shutdown; G6.shutdown] + ...
-        [-ones(1,T),ones(1,T),r_hat.'+r_bar.',r_hat.'-r_bar.']*z;
-
+        [r_hat.'+r_bar.',r_hat.'-r_bar.']*lambda;
 
 % constraints
 con = [
     sum(a,2) == -ones(T,1),
     sum(b,2) == zeros(T,1),
-    sum(c,2) == d,
-    
-    % r should not be here?
-    % is the new variable after dualization x? -> do not think so.
-    
-    g(1,:) == a(1,:).*r(1)+c(1,:),
-    g(1,:) >= zeros(1,NGen),
-    g(1,:) <= x(1,:).*[G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity],
-    g(2:end,:) == a(2:end,:).*repmat(r(2:end),1,NGen)+b(2:end,:).*repmat(r(1:end-1),1,NGen)+c(2:end,:),
-    g(2:end,:) >= zeros(T-1,NGen),
-    g(2:end,:) <= x(2:end,:).*repmat([G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity],T-1,1),
     b(end,:) == zeros(1,NGen),
-    [-ones(T,T), ones(T,T), zeros(T,T), zeros(T,T); zeros(T,T), zeros(T,T), ones(T,T), -ones(T,T)]*z >= [[G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost].'*c.',[G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost].'*(a.'+b.')].',
-    z >= zeros(4*T,1),
+    sum(c,2) == d,
     
     -diff(x) + u(2:end,:) >= zeros(T-1,NGen),
     diff(x) + v(2:end,:) >= zeros(T-1,NGen),
+    
+    lambda(1:T) - lambda(T+1:end) >= ([G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost].'*(a.'+b.')).', % last row of b is zeros
+    lambda >= zeros(2*T,1),
+    
+    
     x(1,:) == [G1.inital, G2.inital, G3.inital, G4.inital, G5.inital, G6.inital],
     u(1,:) == zeros(1,NGen),
     v(1,:) == zeros(1,NGen),
-%     a(:,:) >= zeros(T,NGen),
-%     b(:,:) >= zeros(T,NGen),
-%     c(:,:) >= zeros(T,NGen),
+    a(:,:) >= zeros(T,NGen),
+    b(:,:) >= zeros(T,NGen),
+    c(:,:) >= zeros(T,NGen),
+    eta(:,:,:)<=zeros(T,NGen,2*T),
+    mu(:,:,:)>=zeros(T,NGen,2*T),
 ];
-
+con = eta_mu_equal_con_generate(con, [ones(T,T);-ones(T,T)], eta, a ,b);
+con = eta_mu_equal_con_generate(con, [ones(T,T);-ones(T,T)], mu,  a ,b);
+con = eta_mu_unequal_con_generate(con, [r_hat.'+r_bar.',r_hat.'-r_bar.'].', eta, mu, c, [G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity], x);
 con = minup_con_generate(con, x, [G1.minup, G2.minup, G3.minup, G4.minup, G5.minup, G6.minup]);
 con = mindown_con_generate(con,x,[G1.mindown, G2.mindown, G3.mindown, G4.mindown, G5.mindown, G6.mindown]);
 
@@ -150,15 +148,8 @@ sol=solvesdp(con,obj,ops);
 % obtain the solutions and objective value
 disp(['The value of the objective function is ',num2str(value(obj))]) %gives value of objective function
 
-disp('The optimal value of the decision variable g is given by')
-g_value=value(g)%gives optimal value of decision variable g
-
 disp('When to run the generator and when not is given by')
 x_value=value(x)
-
-disp('Z is given by')
-z_value=value(z)
-
 
 
 
@@ -177,6 +168,31 @@ function con_ret = mindown_con_generate(con,x,mindown_array)
     for mindown_idx=1:length(mindown_array)
         for i=1:mindown_array(mindown_idx)
             con=[con, -diff(x(1:end-1,mindown_idx)) <= ones(T-2,1) - [x(2+i:end,mindown_idx);repmat(x(end,mindown_idx),i-1,1)]];
+        end
+    end
+    con_ret=con;
+end
+
+function con_ret = eta_mu_equal_con_generate(con, Q, eta_or_mu, a ,b)
+    [T,NGen] = size(a);
+    for i=1:NGen
+        for t=1:T
+            if t==1
+                con=[con, Q.'*reshape(eta_or_mu(t,i,:),[2*T,1]) == [a(t,i);zeros(T-t,1)]];
+            else
+                con=[con, Q.'*reshape(eta_or_mu(t,i,:),[2*T,1]) == [zeros(t-2,1);b(t-1,i);a(t,i);zeros(T-(t-2)-2,1)]];
+            end
+        end
+    end
+    con_ret=con;
+end
+
+function con_ret = eta_mu_unequal_con_generate(con, o, eta, mu, c, gbar, x)
+    [T,NGen] = size(c);
+    for i=1:NGen
+        for t=1:T
+            con=[con, -c(t,i) <= o.'*reshape(eta(t,i,:), [2*T,1])];
+            con=[con, gbar(1,i)*x(t,1)-c(t,i) >= o.'*reshape(mu(t,i,:), [2*T,1])];
         end
     end
     con_ret=con;
