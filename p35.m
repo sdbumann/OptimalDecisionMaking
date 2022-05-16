@@ -115,28 +115,21 @@ con = [
     sum(b,2) == zeros(T,1),
     b(end,:) == zeros(1,NGen),
     sum(c,2) == d,
-    
     -diff(x) + u(2:end,:) >= zeros(T-1,NGen),
     diff(x) + v(2:end,:) >= zeros(T-1,NGen),
-    
     lambda(1:T) - lambda(T+1:end) == ([G1.cost; G2.cost; G3.cost; G4.cost; G5.cost; G6.cost].'*(a.'+b.')).', % last row of b is zeros
     lambda >= zeros(2*T,1),
-    
-    
     x(1,:) == [G1.inital, G2.inital, G3.inital, G4.inital, G5.inital, G6.inital],
     u(1,:) == zeros(1,NGen),
     v(1,:) == zeros(1,NGen),
-    a(:,:) >= zeros(T,NGen),
-    b(:,:) >= zeros(T,NGen),
-    c(:,:) >= zeros(T,NGen),
     eta(:,:,:)<=zeros(T,NGen,2*T),
-    mu(:,:,:)>=zeros(T,NGen,2*T),
+    mu(:,:,:)>=zeros(T,NGen,2*T)
 ];
-con = eta_mu_equal_con_generate(con, [ones(T,T);-ones(T,T)], eta, a ,b);
-con = eta_mu_equal_con_generate(con, [ones(T,T);-ones(T,T)], mu,  a ,b);
-con = eta_mu_unequal_con_generate(con, [r_hat.'+r_bar.',r_hat.'-r_bar.'].', eta, mu, c, [G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity], x);
+con = eta_mu_equal_con_generate(con, [eye(T,T);-eye(T,T)], eta, a ,b);
+con = eta_mu_equal_con_generate(con, [eye(T,T);-eye(T,T)], mu,  a ,b);
+con = eta_mu_unequal_con_generate(con, [r_hat+r_bar;r_hat-r_bar], eta, mu, c, [G1.capacity, G2.capacity, G3.capacity, G4.capacity, G5.capacity, G6.capacity], x);
 con = minup_con_generate(con, x, [G1.minup, G2.minup, G3.minup, G4.minup, G5.minup, G6.minup]);
-con = mindown_con_generate(con,x,[G1.mindown, G2.mindown, G3.mindown, G4.mindown, G5.mindown, G6.mindown]);
+con = mindown_con_generate(con, x, [G1.mindown, G2.mindown, G3.mindown, G4.mindown, G5.mindown, G6.mindown]);
 
 
 %% define sdpsetting
@@ -148,6 +141,12 @@ disp(['The value of the objective function is ',num2str(value(obj))]) %gives val
 
 disp('When to run the generator and when not is given by')
 x_value=value(x)
+
+disp('When to turn on the geneartor is given by')
+u_value=value(u)
+
+disp('When to turn off the generator is given by')
+v_value=value(v)
 
 disp('Value of a is given by')
 a_value=value(a)
@@ -199,7 +198,7 @@ function con_ret = eta_mu_unequal_con_generate(con, o, eta, mu, c, gbar, x)
     for i=1:NGen
         for t=1:T
             con=[con, -c(t,i) <= o.'*reshape(eta(t,i,:), [2*T,1])];
-            con=[con, gbar(1,i)*x(t,1)-c(t,i) >= o.'*reshape(mu(t,i,:), [2*T,1])];
+            con=[con, gbar(1,i)*x(t,i)-c(t,i) >= o.'*reshape(mu(t,i,:), [2*T,1])];
         end
     end
     con_ret=con;
