@@ -11,7 +11,7 @@ Economic Dispatch and Unit Commitment
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
-The aim of this project is to apply the theoretical concepts linear programming, integer programming, and robust optimization learned in the course to solve Economic Dispatch and Unit Commitment problems. The implementation is done in Matlab using Yalmip with MOSEK as solver.
+The aim of this project is to apply the theoretical concepts linear programming, integer programming, and robust optimization learned in the course Optimal Decision Making [MGT-483](https://edu.epfl.ch/coursebook/en/optimal-decision-making-MGT-483) to solve Economic Dispatch and Unit Commitment problems. The implementation is done in Matlab using Yalmip with MOSEK as solver.
 
 
 <!-- CONTACT -->
